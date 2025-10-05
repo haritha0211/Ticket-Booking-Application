@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - MovieMax</title>
+    <link rel="stylesheet" href="../../assets/css/styles.css">
+    <link rel="stylesheet" href="../../assets/css/components.css">
+    <link rel="stylesheet" href="../../assets/css/admin.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <a href="../../index.html" class="logo">MovieMax Admin</a>
+            <nav>
+                <ul class="nav-menu">
+                    <li class="nav-item"><a href="dashboard.html" class="active">Dashboard</a></li>
+                    <li class="nav-item"><a href="manage-movies.html">Movies</a></li>
+                    <li class="nav-item"><a href="manage-shows.html">Shows</a></li>
+                    <li class="nav-item"><a href="manage-bookings.html">Bookings</a></li>
+                </ul>
+            </nav>
+            <div class="user-menu">
+                <div class="user-info">
+                    <span class="user-name"></span>
+                    <button class="btn btn-secondary" onclick="auth.adminLogout()">Logout</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Admin Header -->
+    <div class="admin-header">
+        <div class="container">
+            <h1 class="admin-title">Admin Dashboard</h1>
+            <p class="admin-subtitle">Manage your MovieMax system</p>
+        </div>
+    </div>
+
+    <!-- Dashboard Content -->
+    <div class="admin-container">
+        <div class="container">
+            <!-- Stats Cards -->
+            <div class="dashboard-grid">
+                <div class="stat-card movies">
+                    <div class="stat-icon">🎬</div>
+                    <div class="stat-number" id="totalMovies">0</div>
+                    <div class="stat-label">Total Movies</div>
+                </div>
+
+                <div class="stat-card shows">
+                    <div class="stat-icon">🎭</div>
+                    <div class="stat-number" id="totalShows">0</div>
+                    <div class="stat-label">Total Shows</div>
+                </div>
+
+                <div class="stat-card bookings">
+                    <div class="stat-icon">🎫</div>
+                    <div class="stat-number" id="totalBookings">0</div>
+                    <div class="stat-label">Total Bookings</div>
+                </div>
+
+                <div class="stat-card customers">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-number" id="totalRevenue">₹0</div>
+                    <div class="stat-label">Total Revenue</div>
+                </div>
+            </div>
+
+            <!-- Recent Movies -->
+            <div class="content-section">
+                <div class="section-header">
+                    <h2 class="section-title">Recent Movies</h2>
+                    <a href="manage-movies.html" class="btn btn-primary">Manage Movies</a>
+                </div>
+                <div class="section-body">
+                    <div class="data-table-container" id="recentMovies">
+                        <!-- Movies table will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Bookings -->
+            <div class="content-section">
+                <div class="section-header">
+                    <h2 class="section-title">Recent Bookings</h2>
+                    <a href="manage-bookings.html" class="btn btn-primary">View All</a>
+                </div>
+                <div class="section-body">
+                    <div class="data-table-container" id="recentBookings">
+                        <!-- Bookings table will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../../config/app-config.js"></script>
+    <script src="../../assets/js/utils.js"></script>
+    <script src="../../assets/js/api.js"></script>
+    <script src="../../assets/js/auth.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Require admin login
+            if (!auth.requireAdminLogin()) return;
+
+            auth.updateNavigation();
+            loadDashboardData();
+        });
+
+        async function loadDashboardData() {
+            try {
+                await Promise.all([
+                    loadStats(),
+                    loadRecentMovies(),
+                    loadRecentBookings()
+                ]);
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+            }
+        }
+
+        async function loadStats() {
+            try {
+                // Load movies
+                const movies = await api.getMovies();
+                document.getElementById('totalMovies').textContent = movies.length;
+
+                // Load shows
+                const shows = await api.getShows();
+                document.getElementById('totalShows').textContent = shows.length;
+
+                // Load bookings
+                const bookings = await api.getBookings();
+                document.getElementById('totalBookings').textContent = bookings.length;
+
+                // Calculate revenue
+                const totalRevenue = bookings.reduce((sum, booking) => sum + (booking.totalCost || 0), 0);
+                document.getElementById('totalRevenue').textContent = Utils.formatCurrency(totalRevenue);
+
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        async function loadRecentMovies() {
+            const container = document.getElementById('recentMovies');
+
+            try {
+                const movies = await api.getMovies();
+                const recentMovies = movies.slice(0, 5); // Show last 5 movies
+
+                if (recentMovies.length === 0) {
+                    container.innerHTML = '<p class="text-center text-muted">No movies found</p>';
+                    return;
+                }
+
+                const tableHTML = `
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Movie Name</th>
+                                <th>Genre</th>
+                                <th>Language</th>
+                                <th>Duration</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${recentMovies.map(movie => `
+                                <tr>
+                                    <td><strong>${movie.movieName}</strong></td>
+                                    <td>${movie.movieGenre || '-'}</td>
+                                    <td>${movie.language || '-'}</td>
+                                    <td>${movie.movieHours || '-'}h</td>
+                                    <td>
+                                        <div class="table-actions">
+                                            <button class="btn btn-sm btn-edit" onclick="editMovie(${movie.movieId})">Edit</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+
+                container.innerHTML = tableHTML;
+
+            } catch (error) {
+                console.error('Error loading recent movies:', error);
+                container.innerHTML = '<p class="text-center text-muted">Error loading movies</p>';
+            }
+        }
+
+        async function loadRecentBookings() {
+            const container = document.getElementById('recentBookings');
+
+            try {
+                const bookings = await api.getBookings();
+                const recentBookings = bookings.slice(0, 5); // Show last 5 bookings
+
+                if (recentBookings.length === 0) {
+                    container.innerHTML = '<p class="text-center text-muted">No bookings found</p>';
+                    return;
+                }
+
+                const tableHTML = `
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Booking ID</th>
+                                <th>Customer</th>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${recentBookings.map(booking => `
+                                <tr>
+                                    <td><strong>#${booking.ticketId}</strong></td>
+                                    <td>${booking.customerName || 'Customer'}</td>
+                                    <td>${Utils.formatDate(booking.bookingDate)}</td>
+                                    <td>${Utils.formatCurrency(booking.totalCost)}</td>
+                                    <td>
+                                        <span class="status-badge ${getStatusClass(booking.transactionStatus)}">
+                                            ${booking.transactionStatus || 'Confirmed'}
+                                        </span>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+
+                container.innerHTML = tableHTML;
+
+            } catch (error) {
+                console.error('Error loading recent bookings:', error);
+                container.innerHTML = '<p class="text-center text-muted">Error loading bookings</p>';
+            }
+        }
+
+        function getStatusClass(status) {
+            if (!status) return 'status-confirmed';
+            const statusLower = status.toLowerCase();
+            if (statusLower === 'confirmed') return 'status-confirmed';
+            if (statusLower === 'pending') return 'status-pending';
+            return 'status-cancelled';
+        }
+
+        function editMovie(movieId) {
+            window.location.href = `manage-movies.html?edit=${movieId}`;
+        }
+    </script>
+</body>
+</html>

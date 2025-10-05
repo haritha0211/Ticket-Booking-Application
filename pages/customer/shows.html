@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Show - MovieMax</title>
+    <link rel="stylesheet" href="../../assets/css/styles.css">
+    <link rel="stylesheet" href="../../assets/css/components.css">
+    <link rel="stylesheet" href="../../assets/css/booking.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <a href="../../index.html" class="logo">MovieMax</a>
+            <nav>
+                <ul class="nav-menu">
+                    <li class="nav-item"><a href="../../index.html">Home</a></li>
+                    <li class="nav-item"><a href="movies.html">Movies</a></li>
+                    <li class="nav-item nav-login"><a href="../auth/login.html">Login</a></li>
+                    <li class="nav-item nav-logout d-none"><a href="my-bookings.html">My Bookings</a></li>
+                </ul>
+            </nav>
+            <div class="user-menu">
+                <div class="nav-login">
+                    <a href="../auth/login.html" class="btn btn-primary">Sign In</a>
+                </div>
+                <div class="nav-logout d-none">
+                    <div class="user-info">
+                        <span class="user-name"></span>
+                        <button class="btn btn-secondary" onclick="auth.customerLogout()">Logout</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Booking Header -->
+    <div class="booking-header">
+        <div class="container">
+            <h1 class="booking-title" id="movieTitle">Select Show</h1>
+            <p class="booking-subtitle" id="movieInfo">Choose your preferred show time</p>
+        </div>
+    </div>
+
+    <!-- Progress Steps -->
+    <div class="booking-progress">
+        <div class="container">
+            <div class="progress-steps">
+                <div class="progress-step completed">
+                    <div class="step-number">1</div>
+                    <div class="step-label">Select Movie</div>
+                </div>
+                <div class="progress-step active">
+                    <div class="step-number">2</div>
+                    <div class="step-label">Choose Show</div>
+                </div>
+                <div class="progress-step">
+                    <div class="step-number">3</div>
+                    <div class="step-label">Select Seats</div>
+                </div>
+                <div class="progress-step">
+                    <div class="step-number">4</div>
+                    <div class="step-label">Payment</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shows Section -->
+    <div class="booking-container">
+        <div class="container">
+            <div class="shows-grid" id="showsGrid">
+                <!-- Shows will be loaded here -->
+            </div>
+            <div id="noShows" class="empty-state d-none">
+                <div class="empty-icon">🎭</div>
+                <h3>No Shows Available</h3>
+                <p>Please check back later for show timings</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>MovieMax</h3>
+                    <p>Your ultimate destination for booking movie tickets online.</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 MovieMax. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="../../config/app-config.js"></script>
+    <script src="../../assets/js/utils.js"></script>
+    <script src="../../assets/js/api.js"></script>
+    <script src="../../assets/js/auth.js"></script>
+
+    <script>
+        let currentMovie = null;
+        let selectedShow = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            auth.updateNavigation();
+
+            const movieId = Utils.getUrlParameter('movieId');
+            if (!movieId) {
+                window.location.href = 'movies.html';
+                return;
+            }
+
+            loadMovieAndShows(movieId);
+        });
+
+        async function loadMovieAndShows(movieId) {
+            const showsGrid = document.getElementById('showsGrid');
+
+            try {
+                Utils.showLoading(showsGrid);
+
+                // Load movie details
+                currentMovie = await api.getMovie(movieId);
+                document.getElementById('movieTitle').textContent = currentMovie.movieName;
+                document.getElementById('movieInfo').textContent = 
+                    `${currentMovie.movieGenre || 'Drama'} • ${currentMovie.language || 'English'} • ${currentMovie.movieHours || 2}h`;
+
+                // Load shows for this movie
+                const shows = await api.getShowsByMovie(movieId);
+                displayShows(shows);
+
+            } catch (error) {
+                console.error('Error loading shows:', error);
+                showsGrid.innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><h3>Unable to Load Shows</h3><p>Please try again later.</p></div>';
+            }
+        }
+
+        function displayShows(shows) {
+            const showsGrid = document.getElementById('showsGrid');
+            const noShowsDiv = document.getElementById('noShows');
+
+            if (shows.length === 0) {
+                showsGrid.innerHTML = '';
+                noShowsDiv.classList.remove('d-none');
+                return;
+            }
+
+            noShowsDiv.classList.add('d-none');
+
+            // Group shows by date
+            const groupedShows = Utils.groupBy(shows, 'showStartTime');
+            const sortedDates = Object.keys(groupedShows).sort();
+
+            showsGrid.innerHTML = sortedDates.map(date => {
+                const dayShows = groupedShows[date];
+                return createShowsForDate(date, dayShows);
+            }).join('');
+        }
+
+        function createShowsForDate(date, shows) {
+            const showDate = Utils.formatDate(date);
+
+            return `
+                <div class="show-date-section">
+                    <h3 class="show-date-title">${showDate}</h3>
+                    <div class="show-cards">
+                        ${shows.map(show => createShowCard(show)).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function createShowCard(show) {
+            const startTime = Utils.formatTime(show.showStartTime);
+            const endTime = Utils.formatTime(show.showEndTime);
+            const showDate = Utils.formatDate(show.showStartTime);
+
+            return `
+                <div class="show-card" onclick="selectShow(${show.showId})" id="show-${show.showId}">
+                    <div class="show-time">${startTime} - ${endTime}</div>
+                    <div class="show-date">${showDate}</div>
+                    <div class="show-details">
+                        <div class="show-detail">
+                            <strong>Theatre:</strong> ${show.theatreName || 'Cinema Hall'}
+                        </div>
+                        <div class="show-detail">
+                            <strong>Screen:</strong> ${show.screenName || 'Screen 1'}
+                        </div>
+                    </div>
+                    <div class="show-price">
+                        From ₹200
+                    </div>
+                </div>
+            `;
+        }
+
+        function selectShow(showId) {
+            // Remove previous selection
+            document.querySelectorAll('.show-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+
+            // Add selection to current card
+            const selectedCard = document.getElementById(`show-${showId}`);
+            selectedCard.classList.add('selected');
+
+            selectedShow = showId;
+
+            // Proceed to seat selection after a short delay
+            setTimeout(() => {
+                proceedToSeatSelection();
+            }, 500);
+        }
+
+        function proceedToSeatSelection() {
+            if (!selectedShow) {
+                alert('Please select a show');
+                return;
+            }
+
+            if (!auth.isCustomerLoggedIn()) {
+                alert('Please login to continue booking');
+                window.location.href = '../auth/login.html?return=' + encodeURIComponent(window.location.href);
+                return;
+            }
+
+            window.location.href = `seats.html?showId=${selectedShow}`;
+        }
+    </script>
+
+    <style>
+        .show-date-section {
+            margin-bottom: 3rem;
+        }
+
+        .show-date-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #007bff;
+        }
+
+        .show-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+    </style>
+</body>
+</html>

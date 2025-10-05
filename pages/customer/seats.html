@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Seats - MovieMax</title>
+    <link rel="stylesheet" href="../../assets/css/styles.css">
+    <link rel="stylesheet" href="../../assets/css/components.css">
+    <link rel="stylesheet" href="../../assets/css/booking.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <a href="../../index.html" class="logo">MovieMax</a>
+            <nav>
+                <ul class="nav-menu">
+                    <li class="nav-item"><a href="../../index.html">Home</a></li>
+                    <li class="nav-item"><a href="movies.html">Movies</a></li>
+                    <li class="nav-item nav-logout d-none"><a href="my-bookings.html">My Bookings</a></li>
+                </ul>
+            </nav>
+            <div class="user-menu">
+                <div class="nav-logout d-none">
+                    <div class="user-info">
+                        <span class="user-name"></span>
+                        <button class="btn btn-secondary" onclick="auth.customerLogout()">Logout</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Booking Header -->
+    <div class="booking-header">
+        <div class="container">
+            <h1 class="booking-title" id="showTitle">Select Your Seats</h1>
+            <p class="booking-subtitle" id="showInfo">Choose your preferred seats</p>
+        </div>
+    </div>
+
+    <!-- Progress Steps -->
+    <div class="booking-progress">
+        <div class="container">
+            <div class="progress-steps">
+                <div class="progress-step completed">
+                    <div class="step-number">✓</div>
+                    <div class="step-label">Select Movie</div>
+                </div>
+                <div class="progress-step completed">
+                    <div class="step-number">✓</div>
+                    <div class="step-label">Choose Show</div>
+                </div>
+                <div class="progress-step active">
+                    <div class="step-number">3</div>
+                    <div class="step-label">Select Seats</div>
+                </div>
+                <div class="progress-step">
+                    <div class="step-number">4</div>
+                    <div class="step-label">Payment</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="booking-container">
+        <div class="container">
+            <div class="row">
+                <div class="col-8">
+                    <!-- Seat Selection -->
+                    <div class="seat-selection">
+                        <div class="screen-info">
+                            <div class="screen">SCREEN</div>
+                        </div>
+
+                        <div class="seat-map" id="seatMap">
+                            <!-- Seat map will be generated here -->
+                        </div>
+
+                        <div class="seat-legend">
+    <div class="legend-item">
+        <div class="legend-seat available"></div>
+        <span>Available</span>
+    </div>
+    <div class="legend-item">
+        <div class="legend-seat selected"></div>
+        <span>Selected</span>
+    </div>
+    <div class="legend-item">
+        <div class="legend-seat booked"></div>
+        <span>Booked</span>
+    </div>
+    <div class="legend-item">
+        <div class="legend-seat premium"></div>
+        <span>Premium</span>
+    </div>
+    <div class="legend-item">
+        <div class="legend-seat vip"></div>
+        <span>VIP</span>
+    </div>
+</div>
+
+                    </div>
+                </div>
+
+                <div class="col-4">
+                    <!-- Booking Summary -->
+                    <div class="booking-summary">
+                        <h3 class="summary-title">Booking Summary</h3>
+
+                        <div class="summary-item">
+                            <span class="summary-label">Movie:</span>
+                            <span class="summary-value" id="summaryMovie">-</span>
+                        </div>
+
+                        <div class="summary-item">
+                            <span class="summary-label">Show Time:</span>
+                            <span class="summary-value" id="summaryTime">-</span>
+                        </div>
+
+                        <div class="summary-item">
+                            <span class="summary-label">Theatre:</span>
+                            <span class="summary-value" id="summaryTheatre">-</span>
+                        </div>
+
+                        <div class="selected-seats">
+                            <span class="summary-label">Selected Seats:</span>
+                            <div class="seat-tags" id="selectedSeatsDisplay">
+                                <span class="empty-selection">No seats selected</span>
+                            </div>
+                        </div>
+
+                        <div class="summary-item">
+                            <span class="summary-label">Seats Count:</span>
+                            <span class="summary-value" id="seatCount">0</span>
+                        </div>
+
+                        <div class="summary-total">
+                            <div class="summary-item">
+                                <span class="summary-label">Total Amount:</span>
+                                <span class="summary-value" id="totalAmount">₹0</span>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" 
+                                onclick="proceedToPayment()" id="proceedBtn" disabled>
+                            Proceed to Payment
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../../config/app-config.js"></script>
+    <script src="../../assets/js/utils.js"></script>
+    <script src="../../assets/js/api.js"></script>
+    <script src="../../assets/js/auth.js"></script>
+
+    <script>
+        let currentShow = null;
+        let availableSeats = [];
+        let selectedSeats = [];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Require login
+            if (!auth.requireCustomerLogin()) return;
+
+            auth.updateNavigation();
+
+            const showId = Utils.getUrlParameter('showId');
+            if (!showId) {
+                window.location.href = 'movies.html';
+                return;
+            }
+
+            loadShowAndSeats(showId);
+        });
+
+        async function loadShowAndSeats(showId) {
+            const seatMap = document.getElementById('seatMap');
+
+            try {
+                Utils.showLoading(seatMap);
+
+                // Load show details
+                currentShow = await api.getShow(showId);
+                updateShowInfo(currentShow);
+
+                // Load available seats for the screen
+                availableSeats = await api.getAvailableSeats(currentShow.screenId);
+                generateSeatMap();
+
+            } catch (error) {
+                console.error('Error loading seats:', error);
+                seatMap.innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><h3>Unable to Load Seats</h3><p>Please try again later.</p></div>';
+            }
+        }
+
+        function updateShowInfo(show) {
+            document.getElementById('showTitle').textContent = show.movieName || 'Movie';
+            document.getElementById('showInfo').textContent = 
+                `${Utils.formatDateTime(show.showStartTime)} • ${show.theatreName || 'Cinema Hall'}`;
+
+            // Update summary
+            document.getElementById('summaryMovie').textContent = show.movieName || 'Movie';
+            document.getElementById('summaryTime').textContent = Utils.formatDateTime(show.showStartTime);
+            document.getElementById('summaryTheatre').textContent = 
+                `${show.theatreName || 'Cinema Hall'} - ${show.screenName || 'Screen'}`;
+        }
+
+        function generateSeatMap() {
+            const seatMap = document.getElementById('seatMap');
+
+            if (availableSeats.length === 0) {
+                seatMap.innerHTML = '<div class="empty-state"><div class="empty-icon">💺</div><h3>No Seats Available</h3><p>This show is fully booked.</p></div>';
+                return;
+            }
+
+            // Group seats by row (assuming seat numbers like A1, A2, B1, B2)
+            const seatsByRow = {};
+            availableSeats.forEach(seat => {
+                const row = seat.seatNumber.charAt(0);
+                if (!seatsByRow[row]) {
+                    seatsByRow[row] = [];
+                }
+                seatsByRow[row].push(seat);
+            });
+
+            // Sort rows alphabetically
+            const sortedRows = Object.keys(seatsByRow).sort();
+
+            let seatMapHTML = '';
+            sortedRows.forEach(row => {
+                const rowSeats = seatsByRow[row].sort((a, b) => 
+                    parseInt(a.seatNumber.slice(1)) - parseInt(b.seatNumber.slice(1))
+                );
+
+                seatMapHTML += `
+                    <div class="seat-row">
+                        <div class="row-label">${row}</div>
+                        ${rowSeats.map(seat => createSeatHTML(seat)).join('')}
+                    </div>
+                `;
+            });
+
+            seatMap.innerHTML = seatMapHTML;
+        }
+
+        function createSeatHTML(seat) {
+        let seatClass = "seat";
+if (seat.is_booked) {
+    seatClass += " booked";
+} else if (seat.is_blocked) {
+    seatClass += " blocked";
+} else if (seat.type === "Premium") {
+    seatClass += " premium available";
+} else if (seat.type === "VIP") {
+    seatClass += " vip available";
+} else if (seat.type === "IMAX") {
+    seatClass += " imax available";
+} else {
+    seatClass += " available";
+}
+
+
+            // Disable click on booked or blocked seats
+            const onClick = (seat.isBooked || seat.isBlocked) ? '' : `onclick="toggleSeat(${seat.seatId})"`;
+
+            return `
+                <div class="${seatClass}" 
+                    id="seat-${seat.seatId}" 
+                    data-seat-id="${seat.seatId}"
+                    data-seat-number="${seat.seatNumber}"
+                    data-seat-price="${seat.price}"
+                    data-seat-type="${seat.type}"
+                    ${onClick}
+                    title="Seat ${seat.seatNumber} - ${seat.type} - ₹${seat.price}">
+                    ${seat.seatNumber.slice(1)}
+                </div>
+            `;
+        }
+
+        function toggleSeat(seatId) {
+            const seatElement = document.getElementById(`seat-${seatId}`);
+            const seatData = {
+                id: seatId,
+                number: seatElement.dataset.seatNumber,
+                price: parseFloat(seatElement.dataset.seatPrice),
+                type: seatElement.dataset.seatType
+            };
+
+            if (seatElement.classList.contains('selected')) {
+                // Deselect seat
+                seatElement.classList.remove('selected');
+                selectedSeats = selectedSeats.filter(seat => seat.id !== seatId);
+            } else {
+                // Select seat (max 10 seats)
+                if (selectedSeats.length >= 10) {
+                    alert('You can select maximum 10 seats at a time');
+                    return;
+                }
+
+                seatElement.classList.add('selected');
+                selectedSeats.push(seatData);
+            }
+
+            updateBookingSummary();
+        }
+
+        function updateBookingSummary() {
+            const seatCountEl = document.getElementById('seatCount');
+            const totalAmountEl = document.getElementById('totalAmount');
+            const selectedSeatsDisplayEl = document.getElementById('selectedSeatsDisplay');
+            const proceedBtn = document.getElementById('proceedBtn');
+
+            if (selectedSeats.length === 0) {
+                seatCountEl.textContent = '0';
+                totalAmountEl.textContent = '₹0';
+                selectedSeatsDisplayEl.innerHTML = '<span class="empty-selection">No seats selected</span>';
+                proceedBtn.disabled = true;
+            } else {
+                seatCountEl.textContent = selectedSeats.length;
+
+                const totalAmount = selectedSeats.reduce((sum, seat) => sum + seat.price, 0);
+                totalAmountEl.textContent = Utils.formatCurrency(totalAmount);
+
+                selectedSeatsDisplayEl.innerHTML = selectedSeats.map(seat => 
+                    `<span class="seat-tag">${seat.number} (₹${seat.price})</span>`
+                ).join('');
+
+                proceedBtn.disabled = false;
+            }
+        }
+
+        function proceedToPayment() {
+            if (selectedSeats.length === 0) {
+                alert('Please select at least one seat');
+                return;
+            }
+
+            // Store booking data temporarily
+            const bookingData = {
+                showId: currentShow.showId,
+                movieName: currentShow.movieName,
+                showTime: currentShow.showStartTime,
+                theatreName: currentShow.theatreName,
+                screenName: currentShow.screenName,
+                selectedSeats: selectedSeats,
+                totalAmount: selectedSeats.reduce((sum, seat) => sum + seat.price, 0)
+            };
+
+            localStorage.setItem(APP_CONFIG.STORAGE_KEYS.BOOKING_TEMP, JSON.stringify(bookingData));
+
+            window.location.href = 'booking-confirmation.html';
+        }
+    </script>
+</body>
+</html>

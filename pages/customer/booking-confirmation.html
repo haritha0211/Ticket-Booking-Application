@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Confirmation - MovieMax</title>
+    <link rel="stylesheet" href="../../assets/css/styles.css">
+    <link rel="stylesheet" href="../../assets/css/components.css">
+    <link rel="stylesheet" href="../../assets/css/booking.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <a href="../../index.html" class="logo">MovieMax</a>
+            <nav>
+                <ul class="nav-menu">
+                    <li class="nav-item"><a href="../../index.html">Home</a></li>
+                    <li class="nav-item"><a href="movies.html">Movies</a></li>
+                    <li class="nav-item"><a href="my-bookings.html">My Bookings</a></li>
+                </ul>
+            </nav>
+            <div class="user-menu">
+                <div class="user-info">
+                    <span class="user-name"></span>
+                    <button class="btn btn-secondary" onclick="auth.customerLogout()">Logout</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Booking Header -->
+    <div class="booking-header">
+        <div class="container">
+            <h1 class="booking-title">Complete Your Booking</h1>
+            <p class="booking-subtitle">Review and confirm your ticket booking</p>
+        </div>
+    </div>
+
+    <!-- Progress Steps -->
+    <div class="booking-progress">
+        <div class="container">
+            <div class="progress-steps">
+                <div class="progress-step completed">
+                    <div class="step-number">✓</div>
+                    <div class="step-label">Select Movie</div>
+                </div>
+                <div class="progress-step completed">
+                    <div class="step-number">✓</div>
+                    <div class="step-label">Choose Show</div>
+                </div>
+                <div class="progress-step completed">
+                    <div class="step-number">✓</div>
+                    <div class="step-label">Select Seats</div>
+                </div>
+                <div class="progress-step active">
+                    <div class="step-number">4</div>
+                    <div class="step-label">Payment</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="booking-container">
+        <div class="container">
+            <div class="row">
+                <div class="col-8">
+                    <!-- Payment Methods -->
+                    <div class="content-section">
+                        <div class="section-header">
+                            <h3 class="section-title">Select Payment Method</h3>
+                        </div>
+                        <div class="section-body">
+                            <div class="payment-methods">
+                                <div class="payment-method selected" data-method="online">
+                                    <div class="payment-icon">💳</div>
+                                    <div class="payment-label">Online Payment</div>
+                                </div>
+                                <div class="payment-method" data-method="cash">
+                                    <div class="payment-icon">💰</div>
+                                    <div class="payment-label">Cash Payment</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Customer Details -->
+                    <div class="content-section">
+                        <div class="section-header">
+                            <h3 class="section-title">Customer Details</h3>
+                        </div>
+                        <div class="section-body">
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="form-group">
+                                        <label>Name</label>
+                                        <input type="text" class="form-control" id="customerName" readonly>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="form-group">
+                                        <label>Email</label>
+                                        <input type="email" class="form-control" id="customerEmail" readonly>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-4">
+                    <!-- Final Booking Summary -->
+                    <div class="booking-summary">
+                        <h3 class="summary-title">Booking Details</h3>
+
+                        <div class="summary-item">
+                            <span class="summary-label">Movie:</span>
+                            <span class="summary-value" id="finalMovie">-</span>
+                        </div>
+
+                        <div class="summary-item">
+                            <span class="summary-label">Show Time:</span>
+                            <span class="summary-value" id="finalTime">-</span>
+                        </div>
+
+                        <div class="summary-item">
+                            <span class="summary-label">Theatre:</span>
+                            <span class="summary-value" id="finalTheatre">-</span>
+                        </div>
+
+                        <div class="selected-seats">
+                            <span class="summary-label">Seats:</span>
+                            <div class="seat-tags" id="finalSeats"></div>
+                        </div>
+
+                        <div class="summary-total">
+                            <div class="summary-item">
+                                <span class="summary-label">Total Amount:</span>
+                                <span class="summary-value" id="finalAmount">₹0</span>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-success" style="width: 100%; margin-top: 1rem;" 
+                                onclick="confirmBooking()" id="confirmBtn">
+                            Confirm Booking
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="successModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="confirmation-card">
+                <div class="confirmation-icon">🎉</div>
+                <h2 class="confirmation-title">Booking Confirmed!</h2>
+                <p class="confirmation-message">Your tickets have been booked successfully</p>
+
+                <div class="booking-reference">
+                    <div class="reference-label">Booking Reference</div>
+                    <div class="reference-number" id="bookingReference">-</div>
+                </div>
+
+                <div class="row mt-4">
+                    <div class="col-6">
+                        <button class="btn btn-primary" onclick="viewBookings()" style="width: 100%;">
+                            View My Bookings
+                        </button>
+                    </div>
+                    <div class="col-6">
+                        <button class="btn btn-secondary" onclick="bookMore()" style="width: 100%;">
+                            Book More Tickets
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../../config/app-config.js"></script>
+    <script src="../../assets/js/utils.js"></script>
+    <script src="../../assets/js/api.js"></script>
+    <script src="../../assets/js/auth.js"></script>
+
+    <script>
+        let bookingData = null;
+        let selectedPaymentMethod = 'online';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Require login
+            if (!auth.requireCustomerLogin()) return;
+
+            auth.updateNavigation();
+
+            // Load booking data
+            loadBookingData();
+
+            // Setup payment method selection
+            setupPaymentMethods();
+
+            // Load customer details
+            loadCustomerDetails();
+        });
+
+        function loadBookingData() {
+            const tempBookingData = localStorage.getItem(APP_CONFIG.STORAGE_KEYS.BOOKING_TEMP);
+
+            if (!tempBookingData) {
+                alert('No booking data found. Please start over.');
+                window.location.href = 'movies.html';
+                return;
+            }
+
+            bookingData = JSON.parse(tempBookingData);
+
+            // Update summary
+            document.getElementById('finalMovie').textContent = bookingData.movieName;
+            document.getElementById('finalTime').textContent = Utils.formatDateTime(bookingData.showTime);
+            document.getElementById('finalTheatre').textContent = 
+                `${bookingData.theatreName} - ${bookingData.screenName}`;
+            document.getElementById('finalAmount').textContent = Utils.formatCurrency(bookingData.totalAmount);
+
+            // Update seats
+            document.getElementById('finalSeats').innerHTML = bookingData.selectedSeats.map(seat => 
+                `<span class="seat-tag">${seat.number}</span>`
+            ).join('');
+        }
+
+        function setupPaymentMethods() {
+            document.querySelectorAll('.payment-method').forEach(method => {
+                method.addEventListener('click', function() {
+                    document.querySelectorAll('.payment-method').forEach(m => m.classList.remove('selected'));
+                    this.classList.add('selected');
+                    selectedPaymentMethod = this.dataset.method;
+                });
+            });
+        }
+
+        function loadCustomerDetails() {
+            const customer = auth.getCurrentCustomer();
+            if (customer) {
+                document.getElementById('customerName').value = customer.customerName || '';
+                document.getElementById('customerEmail').value = customer.email || '';
+            }
+        }
+
+        async function confirmBooking() {
+            const confirmBtn = document.getElementById('confirmBtn');
+
+            if (!bookingData) {
+                alert('Invalid booking data');
+                return;
+            }
+
+            confirmBtn.disabled = true;
+            confirmBtn.textContent = 'Processing...';
+
+            try {
+                const customer = auth.getCurrentCustomer();
+
+                const bookingRequest = {
+                    customerId: customer.customerId,
+                    showId: bookingData.showId,
+                    seatIds: bookingData.selectedSeats.map(seat => seat.id),
+                    totalCost: bookingData.totalAmount,
+                    transactionId: Math.floor(Math.random() * 1000000) + 100000,
+                    transactionMode: selectedPaymentMethod === 'online' ? 'Online' : 'Cash',
+                    transactionStatus: 'CONFIRMED'
+                };
+
+                const booking = await api.createBooking(bookingRequest);
+
+                // Show success modal
+                document.getElementById('bookingReference').textContent = 
+                    Utils.generateBookingRef();
+                document.getElementById('successModal').classList.add('show');
+
+                // Clear temporary booking data
+                localStorage.removeItem(APP_CONFIG.STORAGE_KEYS.BOOKING_TEMP);
+
+            } catch (error) {
+                console.error('Booking error:', error);
+                alert('Booking failed: ' + error.message);
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = 'Confirm Booking';
+            }
+        }
+
+        function viewBookings() {
+            window.location.href = 'my-bookings.html';
+        }
+
+        function bookMore() {
+            window.location.href = 'movies.html';
+        }
+    </script>
+</body>
+</html>

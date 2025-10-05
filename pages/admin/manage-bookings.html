@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - MovieMax</title>
+    <link rel="stylesheet" href="../../assets/css/styles.css">
+    <link rel="stylesheet" href="../../assets/css/components.css">
+    <link rel="stylesheet" href="../../assets/css/admin.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <a href="../../index.html" class="logo">MovieMax Admin</a>
+            <nav>
+                <ul class="nav-menu">
+                    <li class="nav-item"><a href="dashboard.html" class="active">Dashboard</a></li>
+                    <li class="nav-item"><a href="manage-movies.html">Movies</a></li>
+                    <li class="nav-item"><a href="manage-shows.html">Shows</a></li>
+                    <li class="nav-item"><a href="manage-bookings.html">Bookings</a></li>
+                </ul>
+            </nav>
+            <div class="user-menu">
+                <div class="user-info">
+                    <span class="user-name"></span>
+                    <button class="btn btn-secondary" onclick="auth.adminLogout()">Logout</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+  <!-- Page Title -->
+  <div class="admin-header">
+    <div class="container">
+      <h1>Manage Bookings</h1>
+    </div>
+  </div>
+
+  <div class="container admin-container">
+    <!-- Statistics Cards -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-number" id="totalBookings">0</div>
+        <div class="stat-label">Total Bookings</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" id="confirmedBookings">0</div>
+        <div class="stat-label">Confirmed</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" id="pendingBookings">0</div>
+        <div class="stat-label">Pending</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" id="totalRevenue">₹0</div>
+        <div class="stat-label">Revenue</div>
+      </div>
+    </div>
+
+    <!-- Filters & Table -->
+    <section class="content-section">
+      <div class="filter-row">
+        <input id="searchBookings" type="text" placeholder="Search..." onkeyup="BookingController.applyFilters()"/>
+        <select id="statusFilter" onchange="BookingController.applyFilters()">
+          <option value="">All Status</option>
+          <option value="CONFIRMED">Confirmed</option>
+          <option value="PENDING">Pending</option>
+          <option value="CANCELLED">Cancelled</option>
+        </select>
+        <input id="dateFilter" type="date" onchange="BookingController.applyFilters()"/>
+        <button class="btn btn-secondary" onclick="BookingController.resetFilters()">Reset</button>
+        <button class="btn btn-primary" onclick="BookingController.exportCSV()">Export CSV</button>
+      </div>
+      <div id="bookingsTable"></div>
+    </section>
+  </div>
+
+  <!-- Booking Details Modal -->
+  <div id="bookingModal" class="modal-overlay">
+    <div class="modal-content">
+      <button class="modal-close" onclick="BookingController.closeModal()">&times;</button>
+      <div id="bookingDetails"></div>
+    </div>
+  </div>
+
+  <script src="/config/app-config.js"></script>
+  <script src="/assets/js/utils.js"></script>
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/main.js"></script>
+  <script>
+    const BookingController = {
+      allBookings: [],
+      filtered: [],
+
+      async init() {
+        if (!auth.requireAdminLogin()) return;
+        auth.updateNavigation?.();
+        await this.loadBookings();
+      },
+
+      async loadBookings() {
+        const tableContainer = document.getElementById('bookingsTable');
+        try {
+          Utils?.showLoading?.(tableContainer);
+          this.allBookings = await api.getBookings();
+          this.filtered = this.allBookings.slice();
+          this.updateStats(this.filtered);
+          this.renderTable(this.filtered);
+        } catch (error) {
+          console.error('Error loading bookings:', error);
+          tableContainer.innerHTML = '<p class="text-center text-muted">Error loading bookings</p>';
+        }
+      },
+
+      updateStats(list) {
+        const total = list.length;
+        const confirmed = list.filter(b => b.transactionStatus === 'CONFIRMED').length;
+        const pending = list.filter(b => b.transactionStatus === 'PENDING').length;
+        const revenue = list.reduce((sum, b) => sum + (b.totalCost || 0), 0);
+        const el = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+        el('totalBookings', total);
+        el('confirmedBookings', confirmed);
+        el('pendingBookings', pending);
+        el('totalRevenue', `₹${revenue.toLocaleString('en-IN')}`);
+      },
+
+      applyFilters() {
+        const search = (document.getElementById('searchBookings')?.value || '').toLowerCase();
+        const status = (document.getElementById('statusFilter')?.value || '');
+        const dateStr = (document.getElementById('dateFilter')?.value || '');
+
+        let list = this.allBookings.slice();
+        if (status) list = list.filter(b => b.transactionStatus === status);
+        if (dateStr) {
+          const selected = new Date(dateStr);
+          const sameDay = (d) => d && d.getFullYear() === selected.getFullYear() && d.getMonth() === selected.getMonth() && d.getDate() === selected.getDate();
+          list = list.filter(b => {
+            const when = this.parseDate(b.bookingDate);
+            return sameDay(when);
+          });
+        }
+        if (search) {
+          list = list.filter(b => {
+            const parts = [
+              String(b.ticketId || ''),
+              b.customerName || ''
+            ].join(' ').toLowerCase();
+            return parts.includes(search);
+          });
+        }
+        this.filtered = list;
+        this.updateStats(list);
+        this.renderTable(list);
+      },
+
+      resetFilters() {
+        ['searchBookings','statusFilter','dateFilter'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        this.filtered = this.allBookings.slice();
+        this.updateStats(this.filtered);
+        this.renderTable(this.filtered);
+      },
+
+      exportCSV() {
+        const header = ['Booking ID','Customer','Date','Amount','Status'];
+        const rows = this.filtered.map(b => {
+          const id = b.ticketId || '-';
+          const customer = b.customerName || '-';
+          // Format date as DD MMM YYYY (e.g., "16 Sept 2025")
+          const rawDate = Utils?.formatDate ? Utils.formatDate(b.bookingDate) : this.formatDate(b.bookingDate);
+          const date = (rawDate.includes(',') ? rawDate.split(',')[0] : rawDate);
+          // Format amount without currency symbol for CSV
+          const amount = Number(b.totalCost || 0).toFixed(2);
+          const status = b.transactionStatus || '-';
+          return [`#${id}`, customer, date, amount, status];
+        });
+        const csv = [
+          header.join(','),
+          ...rows.map(r => r.map(v => `"${String(v).replaceAll('"','""')}"`).join(','))
+        ].join('\n');
+        const BOM = '\ufeff';
+        const blob = new Blob([BOM, csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'bookings.csv';
+        link.click();
+      },
+
+      renderTable(list) {
+        const el = document.getElementById('bookingsTable');
+        if (!list || list.length === 0) {
+          el.innerHTML = '<p class="text-center text-muted">No bookings found</p>';
+          return;
+        }
+        const header = `
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Booking ID</th>
+                <th>Customer</th>
+                <th>Date</th>
+                <th>Amount</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+        const rows = list.map(b => {
+          const id = b.ticketId || '-';
+          const status = b.transactionStatus || '-';
+          const customer = b.customerName || '-';
+          const amount = Number(b.totalCost || 0).toLocaleString('en-IN', { style:'currency', currency:'INR' });
+          const date = Utils?.formatDate ? Utils.formatDate(b.bookingDate) : this.formatDate(b.bookingDate);
+          return `
+            <tr>
+              <td><strong>#${id}</strong></td>
+              <td>${customer}</td>
+              <td>${date}</td>
+              <td>${amount}</td>
+              <td><span class="status-badge ${BookingController.getStatusClass(status)}">${status}</span></td>
+            </tr>
+          `;
+        }).join('');
+        el.innerHTML = header + rows + '</tbody></table>';
+      },
+
+      firstOf(obj, keys) { for (const k of keys) { const v = obj?.[k]; if (v !== undefined && v !== null && v !== '') return v; } },
+      getStatusClass(status) {
+        if (!status) return 'status-confirmed';
+        const s = String(status).toLowerCase();
+        if (s === 'confirmed') return 'status-confirmed';
+        if (s === 'pending') return 'status-pending';
+        return 'status-cancelled';
+      },
+      parseDate(v){ try { return v ? new Date(v) : null; } catch { return null; } },
+      formatDate(v){ const d = this.parseDate(v); return (!d||isNaN(d.getTime())) ? '-' : d.toLocaleString(); },
+
+      closeModal(){ document.getElementById('bookingModal')?.classList?.remove('open'); }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => BookingController.init());
+  </script>
+</body>
+</html>

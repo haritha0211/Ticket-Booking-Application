@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In - MovieMax</title>
+    <link rel="stylesheet" href="../../assets/css/styles.css">
+    <link rel="stylesheet" href="../../assets/css/auth.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <a href="../../index.html" class="logo">MovieMax</a>
+            <nav>
+                <ul class="nav-menu">
+                    <li class="nav-item"><a href="../../index.html">Home</a></li>
+                    <li class="nav-item"><a href="../customer/movies.html">Movies</a></li>
+                    <li class="nav-item"><a href="register.html">Register</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Auth Container -->
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h1>Welcome Back!</h1>
+                <p>Sign in to your MovieMax account</p>
+            </div>
+
+            <form class="auth-form" id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" class="form-control" placeholder="Enter your email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" class="form-control" placeholder="Enter your password" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    Sign In
+                </button>
+            </form>
+
+            <div class="auth-links">
+                <p>Don't have an account? <a href="register.html">Create one here</a></p>
+                <div class="divider">
+                    <span>OR</span>
+                </div>
+                <p><a href="admin-login.html">Admin Login</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../../config/app-config.js"></script>
+    <script src="../../assets/js/utils.js"></script>
+    <script src="../../assets/js/api.js"></script>
+    <script src="../../assets/js/auth.js"></script>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+
+            // Disable submit button
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Signing In...';
+
+            try {
+                await auth.customerLogin(email, password);
+                Utils.showSuccess('Login successful! Redirecting...', document.querySelector('.auth-card'));
+
+                setTimeout(() => {
+                    const returnUrl = new URLSearchParams(window.location.search).get('return') || '../../index.html';
+                    window.location.href = returnUrl;
+                }, 1500);
+
+            } catch (error) {
+                Utils.showError(error.message, document.querySelector('.auth-card'));
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Sign In';
+            }
+        });
+
+        // Check if already logged in
+        if (auth.isCustomerLoggedIn()) {
+            window.location.href = '../../index.html';
+        }
+    </script>
+</body>
+</html>

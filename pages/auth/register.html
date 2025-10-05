@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - MovieMax</title>
+    <link rel="stylesheet" href="../../assets/css/styles.css">
+    <link rel="stylesheet" href="../../assets/css/auth.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <a href="../../index.html" class="logo">MovieMax</a>
+            <nav>
+                <ul class="nav-menu">
+                    <li class="nav-item"><a href="../../index.html">Home</a></li>
+                    <li class="nav-item"><a href="../customer/movies.html">Movies</a></li>
+                    <li class="nav-item"><a href="login.html">Sign In</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Auth Container -->
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h1>Join MovieMax</h1>
+                <p>Create your account to start booking amazing movies</p>
+            </div>
+
+            <form class="auth-form" id="registerForm">
+                <div class="form-group">
+                    <label for="customerName">Full Name</label>
+                    <input type="text" id="customerName" class="form-control" placeholder="Enter your full name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" class="form-control" placeholder="Enter your email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="mobileNumber">Mobile Number</label>
+                    <input type="tel" id="mobileNumber" class="form-control" placeholder="Enter your mobile number" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="address">Address</label>
+                    <textarea id="address" class="form-control" placeholder="Enter your address" rows="3" required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" class="form-control" placeholder="Create a password" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm Password</label>
+                    <input type="password" id="confirmPassword" class="form-control" placeholder="Confirm your password" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    Create Account
+                </button>
+            </form>
+
+            <div class="auth-links">
+                <p>Already have an account? <a href="login.html">Sign in here</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../../config/app-config.js"></script>
+    <script src="../../assets/js/utils.js"></script>
+    <script src="../../assets/js/api.js"></script>
+    <script src="../../assets/js/auth.js"></script>
+
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = {
+                customerName: document.getElementById('customerName').value,
+                email: document.getElementById('email').value,
+                mobileNumber: document.getElementById('mobileNumber').value,
+                address: document.getElementById('address').value,
+                password: document.getElementById('password').value
+            };
+
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+
+            // Validate password confirmation
+            if (formData.password !== confirmPassword) {
+                Utils.showError('Passwords do not match', document.querySelector('.auth-card'));
+                return;
+            }
+
+            // Validate email
+            if (!Utils.validateEmail(formData.email)) {
+                Utils.showError('Please enter a valid email address', document.querySelector('.auth-card'));
+                return;
+            }
+
+            // Validate phone
+            if (!Utils.validatePhone(formData.mobileNumber)) {
+                Utils.showError('Please enter a valid 10-digit mobile number', document.querySelector('.auth-card'));
+                return;
+            }
+
+            // Disable submit button
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Creating Account...';
+
+            try {
+                await auth.customerRegister(formData);
+                Utils.showSuccess('Account created successfully! Please sign in to continue.', document.querySelector('.auth-card'));
+
+                setTimeout(() => {
+                    window.location.href = 'login.html';
+                }, 2000);
+
+            } catch (error) {
+                Utils.showError(error.message, document.querySelector('.auth-card'));
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Create Account';
+            }
+        });
+
+        // Check if already logged in
+        if (auth.isCustomerLoggedIn()) {
+            window.location.href = '../../index.html';
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Bookings - MovieMax</title>
+    <link rel="stylesheet" href="../../assets/css/styles.css">
+    <link rel="stylesheet" href="../../assets/css/components.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <a href="../../index.html" class="logo">MovieMax</a>
+            <nav>
+                <ul class="nav-menu">
+                    <li class="nav-item"><a href="../../index.html">Home</a></li>
+                    <li class="nav-item"><a href="movies.html">Movies</a></li>
+                    <li class="nav-item"><a href="my-bookings.html" class="active">My Bookings</a></li>
+                </ul>
+            </nav>
+            <div class="user-menu">
+                <div class="user-info">
+                    <span class="user-name"></span>
+                    <button class="btn btn-secondary" onclick="auth.customerLogout()">Logout</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Page Header -->
+    <section class="page-header">
+        <div class="container">
+            <h1>My Bookings</h1>
+            <p>View and manage your movie ticket bookings</p>
+        </div>
+    </section>
+
+    <!-- Bookings Content -->
+    <div class="container" style="padding: 2rem 0;">
+        <div class="bookings-list" id="bookingsList">
+            <!-- Bookings will be loaded here -->
+        </div>
+
+        <div id="noBookings" class="empty-state d-none">
+            <div class="empty-icon">🎫</div>
+            <h3>No Bookings Found</h3>
+            <p>You haven't made any bookings yet.</p>
+            <a href="movies.html" class="btn btn-primary">Browse Movies</a>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>MovieMax</h3>
+                    <p>Your ultimate destination for booking movie tickets online.</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 MovieMax. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="../../config/app-config.js"></script>
+    <script src="../../assets/js/utils.js"></script>
+    <script src="../../assets/js/api.js"></script>
+    <script src="../../assets/js/auth.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Require login
+            if (!auth.requireCustomerLogin()) return;
+
+            auth.updateNavigation();
+            loadBookings();
+        });
+
+        async function loadBookings() {
+            const bookingsList = document.getElementById('bookingsList');
+            const noBookingsDiv = document.getElementById('noBookings');
+
+            try {
+                Utils.showLoading(bookingsList);
+
+                const customer = auth.getCurrentCustomer();
+                const bookings = await api.getBookingsByCustomer(customer.customerId);
+
+                if (bookings.length === 0) {
+                    bookingsList.innerHTML = '';
+                    noBookingsDiv.classList.remove('d-none');
+                    return;
+                }
+
+                noBookingsDiv.classList.add('d-none');
+
+                // Sort bookings by date (newest first)
+                const sortedBookings = Utils.sortByDate(bookings, 'bookingDate', false);
+
+                bookingsList.innerHTML = sortedBookings.map(booking => createBookingCard(booking)).join('');
+
+            } catch (error) {
+                console.error('Error loading bookings:', error);
+                bookingsList.innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><h3>Unable to Load Bookings</h3><p>Please try again later.</p></div>';
+            }
+        }
+
+        function createBookingCard(booking) {
+            const statusClass = booking.transactionStatus?.toLowerCase() === 'confirmed' ? 'status-confirmed' : 'status-pending';
+
+            return `
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-8">
+                                <h5 class="card-title">${booking.showName || 'Movie Show'}</h5>
+                                <p class="card-text">
+                                    <strong>Date:</strong> ${Utils.formatDate(booking.bookingDate)}<br>
+                                    <strong>Show Time:</strong> ${booking.showName || 'N/A'}<br>
+                                    <strong>Theatre:</strong> Cinema Hall<br>
+                                    <strong>Seats:</strong> ${booking.seatIds?.length || 1} seat(s)<br>
+                                    <strong>Amount:</strong> ${Utils.formatCurrency(booking.totalCost)}<br>
+                                    <strong>Payment:</strong> ${booking.transactionMode || 'Online'}
+                                </p>
+                            </div>
+                            <div class="col-4 text-right">
+                                <span class="status-badge ${statusClass}">
+                                    ${booking.transactionStatus || 'Confirmed'}
+                                </span>
+                                <div class="mt-3">
+                                    <small class="text-muted">Booking ID: #${booking.ticketId}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    </script>
+
+    <style>
+        .page-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 3rem 0 2rem;
+            text-align: center;
+        }
+
+        .page-header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .page-header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-confirmed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+    </style>
+</body>
+</html>

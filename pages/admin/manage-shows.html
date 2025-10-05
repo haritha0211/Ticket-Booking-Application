@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - MovieMax</title>
+    <link rel="stylesheet" href="../../assets/css/styles.css">
+    <link rel="stylesheet" href="../../assets/css/components.css">
+    <link rel="stylesheet" href="../../assets/css/admin.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <a href="../../index.html" class="logo">MovieMax Admin</a>
+            <nav>
+                <ul class="nav-menu">
+                    <li class="nav-item"><a href="dashboard.html" class="active">Dashboard</a></li>
+                    <li class="nav-item"><a href="manage-movies.html">Movies</a></li>
+                    <li class="nav-item"><a href="manage-shows.html">Shows</a></li>
+                    <li class="nav-item"><a href="manage-bookings.html">Bookings</a></li>
+                </ul>
+            </nav>
+            <div class="user-menu">
+                <div class="user-info">
+                    <span class="user-name"></span>
+                    <button class="btn btn-secondary" onclick="auth.adminLogout()">Logout</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+  <!-- Page Title -->
+  <div class="admin-header">
+    <div class="container">
+      <h1>Manage Shows</h1>
+      <button class="btn btn-primary" onclick="ShowController.openAddForm()">+ Add Show</button>
+    </div>
+  </div>
+
+  <div class="container admin-container">
+    <!-- Add/Edit Form -->
+    <section id="show-form-section" class="content-section" style="display:none;">
+      <h2 id="form-title">Add New Show</h2>
+      <form id="showForm" onsubmit="return ShowController.saveShow(event)">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="showName">Show Name *</label>
+            <input id="showName" type="text" class="form-control" required/>
+          </div>
+          <div class="form-group">
+            <label for="movieId">Movie *</label>
+            <select id="movieId" class="form-control" required></select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="showStartTime">Start Time *</label>
+            <input id="showStartTime" type="datetime-local" class="form-control" required/>
+          </div>
+          <div class="form-group">
+            <label for="showEndTime">End Time *</label>
+            <input id="showEndTime" type="datetime-local" class="form-control" required/>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="theatreId">Theatre *</label>
+            <select id="theatreId" class="form-control" required onchange="ShowController.loadScreens()"></select>
+          </div>
+          <div class="form-group">
+            <label for="screenId">Screen *</label>
+            <select id="screenId" class="form-control" required></select>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Save Show</button>
+        <button type="button" class="btn btn-secondary" onclick="ShowController.cancelEdit()">Cancel</button>
+      </form>
+    </section>
+
+    <!-- Filter & Table -->
+    <section class="content-section">
+      <div class="filter-row">
+        <select id="filterMovie" class="filter-select" onchange="ShowController.applyFilters()">
+          <option value="">All Movies</option>
+        </select>
+        <input id="filterDate" type="date" class="filter-select" onchange="ShowController.applyFilters()"/>
+      </div>
+      <div id="showsTable"></div>
+    </section>
+  </div>
+
+  <script src="/config/app-config.js"></script>
+  <script src="/assets/js/utils.js"></script>
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/main.js"></script>
+  <script>
+    const ShowController = {
+      allShows: [],
+      filteredShows: [],
+      allMovies: [],
+
+      async init() {
+        if (!auth.requireAdminLogin()) return;
+        auth.updateNavigation?.();
+
+        await Promise.all([
+          this.loadMoviesForFilter(),
+          this.loadTheatresForForm(),
+          this.loadShows()
+        ]);
+      },
+
+      async loadMoviesForFilter() {
+        try {
+          this.allMovies = await api.getMovies();
+          const select = document.getElementById('filterMovie');
+          const movieSelect = document.getElementById('movieId');
+          if (!select) return;
+          
+          const options = ['<option value="">All Movies</option>']
+            .concat(this.allMovies.map(m => `<option value="${m.movieId}">${m.movieName}</option>`));
+          select.innerHTML = options.join('');
+          
+          // Also populate the movie dropdown in the form
+          if (movieSelect) {
+            movieSelect.innerHTML = '<option value="">Select Movie</option>' + options.slice(1).join('');
+          }
+        } catch (e) { console.warn('Failed to load movies for filter:', e); }
+      },
+
+      async loadShows() {
+        const tableContainer = document.getElementById('showsTable');
+        try {
+          Utils?.showLoading?.(tableContainer);
+          this.allShows = await api.getShows();
+          this.filteredShows = this.allShows.slice();
+          this.renderTable(this.filteredShows);
+        } catch (error) {
+          console.error('Error loading shows:', error);
+          tableContainer.innerHTML = '<p class="text-center text-muted">Error loading shows</p>';
+        }
+      },
+
+      async loadTheatresForForm() {
+        const theatreSelect = document.getElementById('theatreId');
+        const screenSelect = document.getElementById('screenId');
+        if (!theatreSelect) return;
+        try {
+          // Placeholder data. Replace with API when available.
+          const theatres = [
+  { theatreId: 1, theatreName: 'INOX GVK One Mall' },
+  { theatreId: 2, theatreName: 'PVR Forum Mall' },
+  { theatreId: 3, theatreName: 'Cinepolis CCPL Mall' },
+  { theatreId: 4, theatreName: 'Prasads IMAX' },
+  { theatreId: 5, theatreName: 'Asian Cinemas GPR' },
+  { theatreId: 6, theatreName: 'AMB Cinemas' },
+  { theatreId: 7, theatreName: 'Miraj Cinemas' },
+  { theatreId: 8, theatreName: 'SVC Cinemas' }
+];
+
+          theatreSelect.innerHTML = '<option value="">Select Theatre</option>' +
+            theatres.map(t => `<option value="${t.theatreId}">${t.theatreName}</option>`).join('');
+          if (screenSelect) {
+            screenSelect.innerHTML = '<option value="">Select Screen</option>';
+          }
+        } catch (error) {
+          console.error('Error loading theatres:', error);
+        }
+      },
+
+      applyFilters() {
+        const movieId = (document.getElementById('filterMovie')?.value || '').trim();
+        const dateStr = (document.getElementById('filterDate')?.value || '').trim();
+
+        let list = this.allShows.slice();
+        if (movieId) {
+          list = list.filter(s => String(s.movieId) === movieId || String(s.movie?.movieId) === movieId);
+        }
+        if (dateStr) {
+          const selected = new Date(dateStr);
+          const sameDay = (d) => d &&
+            d.getFullYear() === selected.getFullYear() &&
+            d.getMonth() === selected.getMonth() &&
+            d.getDate() === selected.getDate();
+          list = list.filter(s => {
+            const start = this.parseDate(this.firstOf(s, ['showStartTime','startTime','start','date']));
+            return sameDay(start);
+          });
+        }
+        this.filteredShows = list;
+        this.renderTable(list);
+      },
+
+      resetFilters() {
+        const f1 = document.getElementById('filterMovie');
+        const f2 = document.getElementById('filterDate');
+        if (f1) f1.value = '';
+        if (f2) f2.value = '';
+        this.filteredShows = this.allShows.slice();
+        this.renderTable(this.filteredShows);
+      },
+
+      renderTable(shows) {
+        const el = document.getElementById('showsTable');
+        if (!shows || shows.length === 0) {
+          el.innerHTML = '<p class="text-center text-muted">No shows found</p>';
+          return;
+        }
+
+        const header = `
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Show</th>
+                <th>Movie</th>
+                <th>Theatre</th>
+                <th>Screen</th>
+                <th>Start</th>
+                <th>End</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+        const rows = shows.map(s => {
+          const showId = this.firstOf(s, ['showId','id']);
+          const showName = this.firstOf(s, ['showName','name','title']) || '-';
+          const movieName = this.firstOf(s, ['movieName','movieTitle']) || s.movie?.movieName || '-';
+          const theatre = this.firstOf(s, ['theatreName','theaterName','theatre']) || s.theatre?.theatreName || '-';
+          const screen = this.firstOf(s, ['screenName','screen']) || s.screen?.screenName || '-';
+          const start = this.formatDate(this.firstOf(s, ['showStartTime','startTime','start','date']));
+          const end = this.formatDate(this.firstOf(s, ['showEndTime','endTime','end']));
+          return `
+            <tr>
+              <td>${showId ?? '-'}</td>
+              <td>${showName}</td>
+              <td>${movieName}</td>
+              <td>${theatre}</td>
+              <td>${screen}</td>
+              <td>${start}</td>
+              <td>${end}</td>
+            </tr>
+          `;
+        }).join('');
+
+        el.innerHTML = header + rows + '</tbody></table>';
+      },
+
+      firstOf(obj, keys) {
+        for (const k of keys) {
+          const v = obj?.[k];
+          if (v !== undefined && v !== null && v !== '') return v;
+        }
+        return undefined;
+      },
+      parseDate(v) { try { return v ? new Date(v) : null; } catch { return null; } },
+      formatDate(v) {
+  const d = new Date(v);
+  if (isNaN(d)) return '-';
+  // print e.g. “9/17/2025, 2:30 PM”
+  return d.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
+},
+
+      openAddForm() { 
+        document.getElementById('show-form-section').style.display = 'block';
+        this.resetForm();
+      },
+      cancelEdit() { 
+        document.getElementById('show-form-section').style.display = 'none';
+        this.resetForm();
+      },
+      resetForm() {
+        document.getElementById('showForm')?.reset();
+      },
+      async saveShow(e) { 
+        e?.preventDefault?.();
+        const form = document.getElementById('showForm');
+        if (!form) return false;
+        
+        const formData = {
+          showName: document.getElementById('showName')?.value || '',
+          movieId: document.getElementById('movieId')?.value || '',
+          showStartTime: document.getElementById('showStartTime')?.value || '',
+          showEndTime: document.getElementById('showEndTime')?.value || '',
+          theatreId: document.getElementById('theatreId')?.value || '',
+          screenId: document.getElementById('screenId')?.value || ''
+        };
+        
+        try {
+          await api.createShow(formData);
+          Utils?.showSuccess?.('Show created successfully!', document.querySelector('.content-section'));
+          this.cancelEdit();
+          this.loadShows();
+        } catch (error) {
+          Utils?.showError?.(`Failed to create show: ${error.message}`, document.querySelector('.content-section'));
+        }
+        return false;
+      },
+      async loadScreens() {
+  const theatreId = document.getElementById('theatreId')?.value;
+  const screenSelect = document.getElementById('screenId');
+  if (!theatreId || !screenSelect) return;
+
+  // Real screen data keyed by theatre_id
+  const screensByTheatre = {
+    '1': [
+      { screenId: 1, screenName: 'Screen 1' },
+      { screenId: 2, screenName: 'Screen 2' },
+      { screenId: 3, screenName: 'IMAX Screen' }
+    ],
+    '2': [
+      { screenId: 4, screenName: 'Screen 1' },
+      { screenId: 5, screenName: 'Screen 2' },
+      { screenId: 6, screenName: 'Premium Screen' }
+    ],
+    '3': [
+      { screenId: 7, screenName: 'Screen 1' },
+      { screenId: 8, screenName: 'Screen 2' }
+    ],
+    '4': [
+      { screenId: 9, screenName: 'IMAX Hall' },
+      { screenId: 10, screenName: '4DX Screen' }
+    ],
+    '5': [
+      { screenId: 11, screenName: 'Screen 1' },
+      { screenId: 12, screenName: 'Screen 2' }
+    ],
+    '6': [
+      { screenId: 13, screenName: 'Premium Hall' },
+      { screenId: 14, screenName: 'Regular Screen' }
+    ],
+    '7': [
+      { screenId: 15, screenName: 'Gold Class' },
+      { screenId: 16, screenName: 'Silver Screen' }
+    ],
+    '8': [
+      { screenId: 17, screenName: 'Classic Hall' },
+      { screenId: 18, screenName: 'Platinum Screen' }
+    ]
+  };
+
+  const screens = screensByTheatre[theatreId] || [];
+  screenSelect.innerHTML =
+    '<option value="">Select Screen</option>' +
+    screens
+      .map(s => `<option value="${s.screenId}">${s.screenName}</option>`)
+      .join('');
+}
+
+    };
+
+    document.addEventListener('DOMContentLoaded', () => ShowController.init());
+  </script>
+</body>
+</html>

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile - MovieMax</title>
+    <link rel="stylesheet" href="../../assets/css/styles.css">
+    <link rel="stylesheet" href="../../assets/css/components.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <a href="../../index.html" class="logo">MovieMax</a>
+            <nav>
+                <ul class="nav-menu">
+                    <li class="nav-item"><a href="../../index.html">Home</a></li>
+                    <li class="nav-item"><a href="movies.html">Movies</a></li>
+                    <li class="nav-item"><a href="my-bookings.html">My Bookings</a></li>
+                </ul>
+            </nav>
+            <div class="user-menu">
+                <div class="user-info">
+                    <span class="user-name"></span>
+                    <button class="btn btn-secondary" onclick="auth.customerLogout()">Logout</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Page Header -->
+    <section class="page-header">
+        <div class="container">
+            <h1>My Profile</h1>
+            <p>Manage your account information</p>
+        </div>
+    </section>
+
+    <!-- Profile Content -->
+    <div class="container" style="padding: 3rem 0;">
+        <div class="row">
+            <div class="col-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Profile Information</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="profileForm">
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="form-group">
+                                        <label for="customerName">Full Name</label>
+                                        <input type="text" class="form-control" id="customerName" required>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="form-group">
+                                        <label for="email">Email Address</label>
+                                        <input type="email" class="form-control" id="email" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="mobileNumber">Mobile Number</label>
+                                <input type="tel" class="form-control" id="mobileNumber" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="address">Address</label>
+                                <textarea class="form-control" id="address" rows="3" required></textarea>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">Update Profile</button>
+                                <button type="button" class="btn btn-secondary" onclick="loadProfile()">Reset</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Account Stats</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="stat-item">
+                            <div class="stat-number" id="totalBookings">0</div>
+                            <div class="stat-label">Total Bookings</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number" id="totalSpent">₹0</div>
+                            <div class="stat-label">Total Spent</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number" id="memberSince">2025</div>
+                            <div class="stat-label">Member Since</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>MovieMax</h3>
+                    <p>Your ultimate destination for booking movie tickets online.</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 MovieMax. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="../../config/app-config.js"></script>
+    <script src="../../assets/js/utils.js"></script>
+    <script src="../../assets/js/api.js"></script>
+    <script src="../../assets/js/auth.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Require login
+            if (!auth.requireCustomerLogin()) return;
+
+            auth.updateNavigation();
+            loadProfile();
+            loadStats();
+
+            // Setup form submission
+            document.getElementById('profileForm').addEventListener('submit', updateProfile);
+        });
+
+        function loadProfile() {
+            const customer = auth.getCurrentCustomer();
+            if (customer) {
+                document.getElementById('customerName').value = customer.customerName || '';
+                document.getElementById('email').value = customer.email || '';
+                document.getElementById('mobileNumber').value = customer.mobileNumber || '';
+                document.getElementById('address').value = customer.address || '';
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const customer = auth.getCurrentCustomer();
+                const bookings = await api.getBookingsByCustomer(customer.customerId);
+
+                document.getElementById('totalBookings').textContent = bookings.length;
+
+                const totalSpent = bookings.reduce((sum, booking) => sum + (booking.totalCost || 0), 0);
+                document.getElementById('totalSpent').textContent = Utils.formatCurrency(totalSpent);
+
+                document.getElementById('memberSince').textContent = '2025';
+
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        async function updateProfile(e) {
+            e.preventDefault();
+
+            const customer = auth.getCurrentCustomer();
+            const formData = {
+                customerName: document.getElementById('customerName').value,
+                email: document.getElementById('email').value,
+                mobileNumber: document.getElementById('mobileNumber').value,
+                address: document.getElementById('address').value
+            };
+
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+
+            // Validate
+            if (!Utils.validateEmail(formData.email)) {
+                Utils.showError('Please enter a valid email address', document.querySelector('.card-body'));
+                return;
+            }
+
+            if (!Utils.validatePhone(formData.mobileNumber)) {
+                Utils.showError('Please enter a valid 10-digit mobile number', document.querySelector('.card-body'));
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Updating...';
+
+            try {
+                // Note: This would normally update via API, but for demo we'll just update locally
+                const updatedCustomer = { ...customer, ...formData };
+                auth.saveCustomer(updatedCustomer);
+
+                Utils.showSuccess('Profile updated successfully!', document.querySelector('.card-body'));
+
+            } catch (error) {
+                Utils.showError('Failed to update profile: ' + error.message, document.querySelector('.card-body'));
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Update Profile';
+            }
+        }
+    </script>
+
+    <style>
+        .page-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 3rem 0 2rem;
+            text-align: center;
+        }
+
+        .page-header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .page-header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .stat-number {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid #dee2e6;
+        }
+    </style>
+</body>
+</html>

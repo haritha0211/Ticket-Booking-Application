@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browse Movies - MovieMax</title>
+    <link rel="stylesheet" href="../../assets/css/styles.css">
+    <link rel="stylesheet" href="../../assets/css/components.css">
+    <link rel="stylesheet" href="../../assets/css/movies.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <a href="../../index.html" class="logo">MovieMax</a>
+            <nav>
+                <ul class="nav-menu">
+                    <li class="nav-item"><a href="../../index.html">Home</a></li>
+                    <li class="nav-item"><a href="movies.html" class="active">Movies</a></li>
+                    <li class="nav-item nav-login"><a href="../auth/login.html">Login</a></li>
+                    <li class="nav-item nav-logout d-none"><a href="my-bookings.html">My Bookings</a></li>
+                </ul>
+            </nav>
+            <div class="user-menu">
+                <div class="nav-login">
+                    <a href="../auth/login.html" class="btn btn-primary">Sign In</a>
+                </div>
+                <div class="nav-logout d-none">
+                    <div class="user-info">
+                        <span class="user-name"></span>
+                        <button class="btn btn-secondary" onclick="auth.customerLogout()">Logout</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Movies Hero -->
+    <section class="movies-hero">
+        <div class="container">
+            <h1>Now Playing</h1>
+            <p>Discover the latest blockbusters and indie gems</p>
+        </div>
+    </section>
+
+    <!-- Filters -->
+    <section class="movies-filters">
+        <div class="container">
+            <div class="filters-row">
+                <div class="search-box">
+                    <input type="text" id="searchInput" class="search-input" placeholder="Search movies..." onkeyup="filterMovies()">
+                </div>
+                <div class="filter-group">
+                    <label for="genreFilter">Genre</label>
+                    <select id="genreFilter" class="filter-select" onchange="filterMovies()">
+                        <option value="">All Genres</option>
+                        <option value="Action">Action</option>
+                        <option value="Comedy">Comedy</option>
+                        <option value="Drama">Drama</option>
+                        <option value="Horror">Horror</option>
+                        <option value="Romance">Romance</option>
+                        <option value="Sci-Fi">Sci-Fi</option>
+                        <option value="Thriller">Thriller</option>
+                        <option value="Fantasy">Fantasy</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="languageFilter">Language</label>
+                    <select id="languageFilter" class="filter-select" onchange="filterMovies()">
+                        <option value="">All Languages</option>
+                        <option value="Hindi">Hindi</option>
+                        <option value="English">English</option>
+                        <option value="Telugu">Telugu</option>
+                        <option value="Tamil">Tamil</option>
+                        <option value="Kannada">Kannada</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Movies Grid -->
+    <section class="movies-section">
+        <div class="container">
+            <div class="movies-grid" id="moviesGrid">
+                <!-- Movies will be loaded here -->
+            </div>
+            <div id="noMovies" class="no-movies d-none">
+                <h3>No Movies Found</h3>
+                <p>Try adjusting your search criteria</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>MovieMax</h3>
+                    <p>Your ultimate destination for booking movie tickets online.</p>
+                </div>
+                <div class="footer-section">
+                    <h3>Quick Links</h3>
+                    <ul>
+                        <li><a href="../../index.html">Home</a></li>
+                        <li><a href="movies.html">Movies</a></li>
+                        <li><a href="../auth/login.html">Sign In</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 MovieMax. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="../../config/app-config.js"></script>
+    <script src="../../assets/js/utils.js"></script>
+    <script src="../../assets/js/api.js"></script>
+    <script src="../../assets/js/auth.js"></script>
+
+    <script>
+        let allMovies = [];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            auth.updateNavigation();
+            loadMovies();
+        });
+
+        async function loadMovies() {
+            const grid = document.getElementById('moviesGrid');
+
+            try {
+                Utils.showLoading(grid);
+
+                allMovies = await api.getMovies();
+                displayMovies(allMovies);
+
+            } catch (error) {
+                console.error('Error loading movies:', error);
+                grid.innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><h3>Unable to Load Movies</h3><p>Please check your connection and try again.</p></div>';
+            }
+        }
+
+        function displayMovies(movies) {
+            const grid = document.getElementById('moviesGrid');
+            const noMoviesDiv = document.getElementById('noMovies');
+
+            if (movies.length === 0) {
+                grid.innerHTML = '';
+                noMoviesDiv.classList.remove('d-none');
+                return;
+            }
+
+            noMoviesDiv.classList.add('d-none');
+            grid.innerHTML = movies.map(movie => createMovieCard(movie)).join('');
+        }
+
+        function createMovieCard(movie) {
+            const posterUrl = `https://via.placeholder.com/300x450/667eea/white?text=${encodeURIComponent(movie.movieName)}`;
+
+            return `
+                <div class="movie-card" onclick="viewMovieDetails(${movie.movieId})">
+                    <div class="movie-poster">
+                        <img src="${posterUrl}" alt="${movie.movieName}" 
+                             onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 450%22><rect fill=%22%23667eea%22 width=%22300%22 height=%22450%22/><text x=%22150%22 y=%22225%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2220%22>${encodeURIComponent(movie.movieName)}</text></svg>'">
+                        <div class="movie-rating"> 8.5</div>
+                    </div>
+                    <div class="movie-info">
+                        <h3 class="movie-title">${movie.movieName}</h3>
+                        <div class="movie-details">
+                            <span class="movie-detail genre">${movie.movieGenre || 'Drama'}</span>
+                            <span class="movie-detail language">${movie.language || 'English'}</span>
+                            <span class="movie-detail duration">${movie.movieHours || 2}h</span>
+                        </div>
+                        <p class="movie-description">${movie.description || 'An exciting cinematic experience awaits you with this amazing movie.'}</p>
+                        <div class="movie-actions">
+                            <button class="btn-book" onclick="event.stopPropagation(); bookMovie(${movie.movieId})">Book Tickets</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function viewMovieDetails(movieId) {
+            window.location.href = `shows.html?movieId=${movieId}`;
+        }
+
+        function bookMovie(movieId) {
+            if (!auth.isCustomerLoggedIn()) {
+                alert('Please login to book tickets');
+                window.location.href = '../auth/login.html?return=' + encodeURIComponent(window.location.href);
+                return;
+            }
+
+            window.location.href = `shows.html?movieId=${movieId}`;
+        }
+
+        function filterMovies() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const genreFilter = document.getElementById('genreFilter').value;
+            const languageFilter = document.getElementById('languageFilter').value;
+
+            const filteredMovies = allMovies.filter(movie => {
+                const matchesSearch = movie.movieName.toLowerCase().includes(searchTerm) ||
+                                    (movie.description || '').toLowerCase().includes(searchTerm);
+                const matchesGenre = !genreFilter || movie.movieGenre === genreFilter;
+                const matchesLanguage = !languageFilter || movie.language === languageFilter;
+
+                return matchesSearch && matchesGenre && matchesLanguage;
+            });
+
+            displayMovies(filteredMovies);
+        }
+    </script>
+</body>
+</html>
